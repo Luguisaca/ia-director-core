@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+records/
+.qa-records/
+.ia-director/
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+*.log
+.env
+.env.*
+!.env.example

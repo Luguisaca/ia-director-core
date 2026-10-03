@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ia-director-core"
+version = "0.1.0"
+description = "Experimental contract-driven core for bounded, policy-gated, evidence-backed work"
+requires-python = ">=3.11"
+license = "PolyForm-Noncommercial-1.0.0"
+
+[project.scripts]
+ia-director = "ia_director.__main__:main"
+
+[tool.setuptools]
+packages = ["ia_director"]
