@@ -23,7 +23,7 @@ Clone the repository and use an isolated Python environment.
 ### Windows
 
 ```powershell
-git clone <REPOSITORY-URL>
+git clone https://github.com/Luguisaca/ia-director-core.git
 cd ia-director-core
 py -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --no-deps .
@@ -32,7 +32,7 @@ py -m venv .venv
 ### Ubuntu / Debian
 
 ```sh
-git clone <REPOSITORY-URL>
+git clone https://github.com/Luguisaca/ia-director-core.git
 cd ia-director-core
 python3 -m venv .venv
 . .venv/bin/activate
