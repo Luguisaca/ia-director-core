@@ -126,8 +126,8 @@ class RuntimeDevelopmentProvider:
         def execute(instruction:str)->str:
             result=execute_turn(executable,self.workspace,instruction)
             return result.status
-        def verify(_instruction:str,_output:str)->bool:
-            return verify_workspace(self.workspace)[0]
+        def verify(_instruction:str,_output:str):
+            return verify_workspace(self.workspace)
         return (DiscoveredCapability(evidence,execute,verify),)
 
 def runtime_development_providers(workspace: Path):
