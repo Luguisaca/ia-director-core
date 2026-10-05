@@ -1,4 +1,4 @@
-"""Bounded capability discovery and execution layer.
+"""Experimental discovery/execution layer for capability selection.
 
 Discovery is intentionally explicit and bounded. Providers return capabilities
 with evidence plus an executor. Nothing discovered is automatically authorized.
@@ -25,6 +25,42 @@ class DiscoveredCapability:
     verify: Verifier
 
 
+@dataclass(frozen=True)
+class CapabilityCharacterization:
+    capability: str
+    status: str
+    proven_features: frozenset[str]
+    observations: tuple[str, ...]
+    adapter: str | None = None
+
+
+def characterize_capability(
+    capability: DiscoveredCapability,
+    *,
+    proven_features: Iterable[str] = (),
+    observations: Iterable[str] = (),
+    adapter: str | None = None,
+) -> CapabilityCharacterization:
+    """Record probe evidence without promoting presence into competence.
+
+    Characterization is intentionally separate from discovery and authorization.
+    A transport/adapter failure is evidence about that invocation path, not
+    automatic evidence that the underlying model/tool capability is unusable.
+    """
+    features = frozenset(proven_features)
+    advertised = capability.evidence.features
+    if not features <= advertised:
+        unknown = ", ".join(sorted(features - advertised))
+        raise ValueError(f"cannot prove unadvertised features: {unknown}")
+    return CapabilityCharacterization(
+        capability=capability.evidence.name,
+        status="CHARACTERIZED" if features else "PRESENCE_ONLY",
+        proven_features=features,
+        observations=tuple(observations),
+        adapter=adapter,
+    )
+
+
 class CapabilityProvider(Protocol):
     def discover(self) -> Iterable[DiscoveredCapability]: ...
 
@@ -36,6 +72,22 @@ class ExecutionRecord:
     result: str | None
     verified: bool
     status: str
+
+
+@dataclass(frozen=True)
+class StrategyAttempt:
+    capability: str
+    status: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class StrategyRecord:
+    selected: str | None
+    considered: tuple[str, ...]
+    attempts: tuple[StrategyAttempt, ...]
+    status: str
+    handoff: dict
 
 
 class BuiltinProvider:
@@ -83,7 +135,7 @@ class EnvironmentToolProvider:
     a safe executable capability.
     """
 
-    _KNOWN = ("python3", "git", "curl", "node", "rg")
+    _KNOWN = ("python3", "python", "git", "curl", "node", "rg", "codex", "ollama", "wsl")
 
     def discover(self) -> tuple[DiscoveredCapability, ...]:
         found: list[DiscoveredCapability] = []
@@ -160,3 +212,62 @@ def execute_contract(
         verified,
         "VERIFIED" if verified else "VERIFICATION_FAILED",
     )
+
+
+def execute_contract_adaptive(
+    contract: WorkContract,
+    payload: str,
+    providers: Iterable[CapabilityProvider],
+) -> StrategyRecord:
+    """Discover and try admissible candidates until one verifies.
+
+    This is a bounded strategy experiment, not a universal planner. Selection
+    remains contract/evidence driven; a failed verifier is evidence to reject
+    that candidate for this run rather than a reason to ask the human to choose
+    another already-discovered option.
+    """
+    capabilities = discover_capabilities(providers)
+    decisions = [
+        select_capability(contract, [item.evidence])[1][0]
+        for item in capabilities
+    ]
+    considered = tuple(item.capability for item in decisions)
+    admitted = sorted(
+        (
+            (decision.score, capability)
+            for decision, capability in zip(decisions, capabilities)
+            if decision.admissible and decision.score is not None
+        ),
+        key=lambda item: item[0],
+    )
+    attempts: list[StrategyAttempt] = []
+    for _score, capability in admitted:
+        result = capability.execute(payload)
+        if capability.verify(payload, result):
+            attempts.append(StrategyAttempt(capability.evidence.name, "VERIFIED", "independent verifier passed"))
+            handoff = {
+                "selected": capability.evidence.name,
+                "why": "lowest-cost/complexity admissible candidate that independently verified",
+                "considered": considered,
+                "attempts": tuple({"capability": x.capability, "status": x.status, "reason": x.reason} for x in attempts),
+                "estimated_cost": capability.evidence.estimated_cost,
+                "risk": capability.evidence.risk,
+                "data_destinations": tuple(sorted(capability.evidence.destinations or ())),
+                "human_action_required": None,
+            }
+            return StrategyRecord(capability.evidence.name, considered, tuple(attempts), "VERIFIED", handoff)
+        attempts.append(StrategyAttempt(capability.evidence.name, "REJECTED_AFTER_VERIFICATION", "independent verifier failed"))
+
+    rejected = tuple(
+        {"capability": d.capability, "reasons": d.reasons}
+        for d in decisions if not d.admissible
+    )
+    handoff = {
+        "selected": None,
+        "why": "no discovered admissible candidate produced independently verified output",
+        "considered": considered,
+        "attempts": tuple({"capability": x.capability, "status": x.status, "reason": x.reason} for x in attempts),
+        "rejected": rejected,
+        "human_action_required": "Acquire, authorize, or provide missing capability only if further autonomous discovery cannot satisfy the contract.",
+    }
+    return StrategyRecord(None, considered, tuple(attempts), "NO_VERIFIED_CAPABILITY", handoff)

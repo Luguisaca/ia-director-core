@@ -44,6 +44,7 @@ class DirectedContractTests(unittest.TestCase):
             self.assertTrue(record["policy"]["allowed"])
             self.assertTrue(record["verification"]["passed"])
             self.assertEqual(record["status"], "HUMAN_TEST_PENDING")
+            self.assertEqual(record["accountability"]["tests"][0]["status"], "PASS")
             self.assertEqual(json.loads(path.read_text())["id"], record["id"])
 
     def test_sensitive_payload_and_result_are_not_persisted(self):
@@ -84,7 +85,8 @@ class DirectedContractTests(unittest.TestCase):
                 Path(tmp),
                 (BuiltinProvider(),),
             )
-            self.assertEqual(record["status"], "NO_ADMISSIBLE_CAPABILITY")
+            self.assertEqual(record["status"], "CAPABILITY_RESOLUTION_REQUIRED")
+            self.assertFalse(record["human_gate"]["reached"])
             self.assertIsNone(record["selection"]["selected"])
             self.assertIsNone(record["execution"])
 
@@ -270,21 +272,6 @@ class DirectedContractTests(unittest.TestCase):
             reconciled = reconcile_interrupted_record(paths[0])
             self.assertEqual(reconciled["status"], "INTERRUPTED")
             self.assertNotEqual(reconciled["status"], "HUMAN_TEST_PENDING")
-
-    def test_wrong_target_is_blocked_before_execution(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            auth = DirectedAuthorization(
-                granted=True,
-                granted_by="human-fixture",
-                allowed_capabilities=frozenset({"builtin.sha256"}),
-                allowed_targets=frozenset({"fixture://other"}),
-            )
-            record, _ = run_contract(
-                self.contract(), "hello", auth, Path(tmp), (BuiltinProvider(),)
-            )
-            self.assertEqual(record["status"], "POLICY_BLOCKED")
-            self.assertIn("contract target is outside authorization", record["policy"]["reasons"])
-            self.assertIsNone(record["execution"])
 
     def test_wrong_target_is_blocked_before_execution(self):
         with tempfile.TemporaryDirectory() as tmp:

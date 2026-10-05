@@ -82,9 +82,12 @@ def snapshot_tree(root: Path) -> dict[str, FileState]:
         return {}
     snapshot: dict[str, FileState] = {}
     for path in sorted(root.rglob("*")):
+        relative = path.relative_to(root)
+        if any(part in {".git", "__pycache__"} for part in relative.parts):
+            continue
         if path.is_file() and not path.is_symlink():
             stat = path.stat()
-            snapshot[path.relative_to(root).as_posix()] = FileState(stat.st_size, stat.st_mtime_ns)
+            snapshot[relative.as_posix()] = FileState(stat.st_size, stat.st_mtime_ns)
     return snapshot
 
 

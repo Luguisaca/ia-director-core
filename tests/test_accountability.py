@@ -6,7 +6,7 @@ from ia_director.accountability import (
     ArtifactDisposition,
     EnvironmentChange,
     ExecutionLedger,
-    classify_path,
+    classify_path, snapshot_tree,
 )
 
 
@@ -43,3 +43,13 @@ class ExecutionAccountabilityTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class SnapshotNoiseTests(unittest.TestCase):
+    def test_snapshot_excludes_vcs_and_python_cache_noise(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / '.git').mkdir(); (root / '.git' / 'index').write_text('noise')
+            (root / '__pycache__').mkdir(); (root / '__pycache__' / 'x.pyc').write_bytes(b'noise')
+            (root / 'app.py').write_text('useful')
+            snap = snapshot_tree(root)
+            self.assertEqual(set(snap), {'app.py'})

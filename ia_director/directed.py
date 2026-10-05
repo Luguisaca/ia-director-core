@@ -12,6 +12,7 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
+from .accountability import ExecutionLedger
 from .capabilities import CapabilityProvider, discover_capabilities
 from .core import _persist, now_utc
 from .selection import WorkContract, contract_issues, select_capability
@@ -56,8 +57,9 @@ def run_contract(
         selected, decisions = select_capability(
             contract, [item.evidence for item in discovered]
         )
+    ledger = ExecutionLedger(contract.outcome)
     record = {
-        "schema_version": 2,
+        "schema_version": 3,
         "id": str(uuid.uuid4()),
         "created_at": now_utc(),
         "updated_at": None,
@@ -97,6 +99,7 @@ def run_contract(
         "execution": None,
         "verification": None,
         "evidence": [],
+        "accountability": ledger.as_record(),
         "status": "CREATED",
         "human_gate": {"reached": False, "reason": None},
     }
@@ -111,10 +114,10 @@ def run_contract(
         return record, _persist(record, records_dir)
 
     if selected is None:
-        record["status"] = "NO_ADMISSIBLE_CAPABILITY"
+        record["status"] = "CAPABILITY_RESOLUTION_REQUIRED"
         record["human_gate"] = {
-            "reached": True,
-            "reason": "No discovered capability satisfies the contract evidence.",
+            "reached": False,
+            "reason": "No current capability is admissible; discovery/reuse/composition/build resolution remains IA work.",
         }
         record["updated_at"] = now_utc()
         return record, _persist(record, records_dir)
@@ -184,6 +187,12 @@ def run_contract(
             {"kind": "verification", "passed": verified, "method": selected.verification},
         ]
     )
+    ledger.record_test(
+        selected.verification or "capability verification",
+        "PASS" if verified else "FAIL",
+        f"result_sha256:{result_digest}",
+    )
+    record["accountability"] = ledger.as_record()
     if verified:
         record["status"] = "HUMAN_TEST_PENDING"
         record["human_gate"] = {
