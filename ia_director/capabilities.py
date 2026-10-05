@@ -1,4 +1,4 @@
-"""Experimental discovery/execution layer for capability selection.
+"""Experimental discovery/execution layer for EXP-001.
 
 Discovery is intentionally explicit and bounded. Providers return capabilities
 with evidence plus an executor. Nothing discovered is automatically authorized.
@@ -15,7 +15,14 @@ from .selection import CapabilityEvidence, WorkContract, select_capability
 
 
 Executor = Callable[[str], str]
-Verifier = Callable[[str, str], bool]
+VerificationResult = bool | tuple[bool, str]
+Verifier = Callable[[str, str], VerificationResult]
+
+
+def normalize_verification(result: VerificationResult) -> tuple[bool, str | None]:
+    if isinstance(result, tuple):
+        return result[0], result[1]
+    return result, None
 
 
 @dataclass(frozen=True)
