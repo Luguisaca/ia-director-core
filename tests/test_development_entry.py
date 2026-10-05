@@ -95,6 +95,15 @@ class DevelopmentEntryTests(unittest.TestCase):
    with self.assertRaises(WorkspaceExecutionError):
     run_discovered_development_intent('Build fixture',workspace=root,records_dir=root/'records',providers=[StaticProvider([first,second])],authorized=True,authorized_by='human-fixture')
    self.assertEqual(calls,['first'])
+ def test_detailed_verification_evidence_reaches_repair_instruction(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   root=Path(tmp);instructions=[]
+   def execute(instruction):instructions.append(instruction);return 'completed'
+   candidate=DiscoveredCapability(self.capability(),execute,lambda _i,_o:(False,'no project artifact exists'))
+   record,_=run_discovered_development_intent('Build fixture',workspace=root,records_dir=root/'records',providers=[StaticProvider([candidate])],authorized=True,authorized_by='human-fixture',max_attempts=2)
+   self.assertEqual(record['status'],'VERIFICATION_FAILED')
+   self.assertIn('no project artifact exists',record['development']['verification_evidence'][0])
+   self.assertIn('no project artifact exists',instructions[1])
  def test_discovered_callbacks_reuse_bounded_repair_flow(self):
   with tempfile.TemporaryDirectory() as tmp:
    root=Path(tmp);ws=root/'work';ws.mkdir();instructions=[];verified=[]
