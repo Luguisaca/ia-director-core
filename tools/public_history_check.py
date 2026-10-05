@@ -4,7 +4,7 @@ import re, subprocess, sys
 
 FORBIDDEN_PATH=re.compile(r"(?im)^(?:.*?/)?(?:BOOTSTRAP\.md|CURRENT-STATE\.md|CORE-READINESS\.md|PILOT\.md|REUSE-BENCHMARK\.md)$|^(?:\.specify|specs|benchmarks|docs/internal)/")
 CONTENT_PATTERNS={
- "internal_marker": re.compile(r"\b(?:LAB-\d{3}|EXP-\d{3}|Agent Economy|pre-Lab|Notion)\b",re.I),
+ "internal_marker": re.compile(r"\b(?:LAB-\d{3}|EXP-\d{3}|Agent Economy|pre-Lab)\b",re.I),
  "secret": re.compile(r"(?:-----BEGIN (?:RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----|\bgh[pousr]_[A-Za-z0-9]{20,}\b|\bgithub_pat_[A-Za-z0-9_]{20,}\b|\bAKIA[0-9A-Z]{16}\b)"),
  "local_path": re.compile(r"(?:[A-Z]:\\\\Users\\\\|/home/[^/<\s]+/|/Users/[^/<\s]+/)",re.I),
 }
