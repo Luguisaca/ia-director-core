@@ -13,7 +13,7 @@ class AcquisitionPlanningTests(unittest.TestCase):
    plan=plan_development_acquisition()[0]
   self.assertEqual(plan.kind,"authentication");self.assertEqual(plan.action[-1],"login")
  def test_authentication_uses_native_codex_executable_when_wrapper_node_path_is_stale(self):
-  with patch("ia_director.runtime._codex_cli",return_value=r"C:\\Users\\qa\\AppData\\Roaming\\npm\\codex.cmd"),patch("ia_director.runtime._codex_authenticated",return_value=False),patch("ia_director.runtime._codex_executable",return_value=r"C:\\Users\\qa\\AppData\\Roaming\\npm\\node_modules\\@openai\\codex\\vendor\\codex.exe"):
+  with patch("ia_director.runtime._codex_cli",return_value=r"C:\\Profile\\qa\\AppData\\Roaming\\npm\\codex.cmd"),patch("ia_director.runtime._codex_authenticated",return_value=False),patch("ia_director.runtime._codex_executable",return_value=r"C:\\Profile\\qa\\AppData\\Roaming\\npm\\node_modules\\@openai\\codex\\vendor\\codex.exe"):
    plan=plan_development_acquisition()[0]
   self.assertEqual(plan.kind,"authentication");self.assertEqual(plan.action[-1],"login")
   self.assertTrue(plan.action[0].lower().endswith("codex.exe"))
