@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from pathlib import Path
 from typing import Iterable
-from .capabilities import CapabilityProvider,discover_capabilities
+from .capabilities import CapabilityProvider,discover_capabilities,normalize_verification
 from .core import _persist,now_utc
 from .development import DevelopmentExecutor,DevelopmentVerifier,run_development
 from .intent import derive_development_contract
@@ -43,8 +43,9 @@ def run_discovered_development_intent(intent:str,*,workspace:Path,records_dir:Pa
    latest['instruction']=instruction;latest['output']=chosen.execute(instruction)
    return latest['output']
   def verify(_workspace:Path)->tuple[bool,str]:
-   passed=chosen.verify(latest['instruction'],latest['output'])
-   return passed,f'{selected.name}: {selected.verification}: {"PASS" if passed else "FAIL"}'
+   passed,detail=normalize_verification(chosen.verify(latest['instruction'],latest['output']))
+   summary=f'{selected.name}: {selected.verification}: {"PASS" if passed else "FAIL"}'
+   return passed,f'{summary}; {detail}' if detail else summary
   record,path=run_development_intent(intent,workspace=workspace,records_dir=records_dir,capability=selected,executor=execute,verifier=verify,authorized=authorized,authorized_by=authorized_by,max_attempts=max_attempts,allowed_destinations=allowed_destinations)
   selection['attempts'].append({'capability':selected.name,'record_id':record['id'],'status':record['status'],'policy':record['policy'],'development':record['development'],'accountability':record['accountability']})
   record['selection']=selection
