@@ -52,10 +52,10 @@ def _cli_action(executable:str,*args:str)->tuple[str,...]:
     return ("cmd","/d","/c",executable,*args) if Path(executable).suffix.lower()==".cmd" else (executable,*args)
 
 def _codex_authenticated()->bool:
-    cli=_codex_cli()
-    if not cli:return False
+    executable=_codex_executable()
+    if not executable:return False
     try:
-        return subprocess.run(_cli_action(cli,"login","status"),capture_output=True,text=True,timeout=15).returncode==0
+        return subprocess.run(_cli_action(executable,"login","status"),capture_output=True,text=True,timeout=15).returncode==0
     except (OSError,subprocess.TimeoutExpired):
         return False
 
@@ -63,7 +63,8 @@ def plan_development_acquisition() -> tuple[AcquisitionPlan,...]:
     """Return the next bounded acquisition/authority step after discovery is insufficient."""
     cli=_codex_cli()
     if cli and not _codex_authenticated():
-        return (AcquisitionPlan("runtime.codex.app-server",_cli_action(cli,"login"),"provider authentication","Codex is installed but provider authentication is not usable.",True,"authentication"),)
+        executable=_codex_executable() or cli
+        return (AcquisitionPlan("runtime.codex.app-server",_cli_action(executable,"login"),"provider authentication","Codex is installed but provider authentication is not usable.",True,"authentication"),)
     npm=_npm_cli()
     if not cli and npm:
         action=_cli_action(npm,"install","-g","@openai/codex")
