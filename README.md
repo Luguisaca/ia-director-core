@@ -25,7 +25,7 @@ Clone the repository and use an isolated Python environment.
 ```powershell
 git clone https://github.com/Luguisaca/ia-director-core.git
 cd ia-director-core
-py -m venv .venv
+python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --no-deps .
 ```
 
@@ -43,7 +43,16 @@ A packaged virtual-environment install requires the operating system to provide 
 
 ## Verify the installation
 
+### Windows
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+### Ubuntu / Debian
+
 ```sh
+. .venv/bin/activate
 python -m unittest discover -s tests -v
 ```
 
