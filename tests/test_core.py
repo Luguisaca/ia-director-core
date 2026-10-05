@@ -38,7 +38,7 @@ class CoreWorkflowTests(unittest.TestCase):
     def test_real_intent_without_capability_is_not_faked(self):
         with tempfile.TemporaryDirectory() as temporary:
             auth = Authorization(True, "human", IntentDigestCapability.name, "low")
-            record, _ = run_intent("Create a remote support capability", auth, Path(temporary))
+            record, _ = run_intent("Create remote support", auth, Path(temporary))
             self.assertEqual(record["status"], "NO_CAPABILITY")
             self.assertIsNone(record["execution"])
 

@@ -20,11 +20,13 @@ def derive_development_contract(
     target: str,
     allowed_destinations: frozenset[str] = frozenset({"local"}),
     max_risk: str = "low",
+    max_cost: float | None = None,
 ) -> IntentResolution:
     """Derive a conservative development contract from a non-empty human intent.
 
     This deliberately derives only transversal engineering acceptance properties.
-    Product choices not stated by the human remain outside this helper.
+    Product choices not stated by the human remain outside this helper. Cost is
+    unconstrained unless an authorized caller supplies an explicit budget limit.
     """
     normalized = " ".join(intent.split())
     if not normalized:
@@ -46,10 +48,10 @@ def derive_development_contract(
         acceptance_criteria=criteria,
         targets=frozenset({target}),
         max_risk=max_risk,
-        max_cost=0.0,
+        max_cost=max_cost,
     )
     return IntentResolution(
         contract,
-        ("transversal development acceptance criteria", "local-first data destination", "zero external service cost"),
+        ("transversal development acceptance criteria", "local-first data destination"),
         (),
     )

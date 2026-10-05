@@ -49,17 +49,21 @@ python -m unittest discover -s tests -v
 
 The repository test suite is the executable regression baseline. Passing it demonstrates only the properties covered by those tests; it is not a security, privacy, compliance or production certification.
 
-## CLI smoke test
+## Intent entry
 
-The current CLI exposes a deterministic demo capability:
+Run IA Director with the outcome you want:
 
 ```powershell
-.\.venv\Scripts\ia-director.exe "demo: smoke test" --records-dir .ia-director/records --authorize --authorized-by pilot-human --scope builtin.intent_digest --risk-tier low
+.\.venv\Scripts\ia-director.exe "Create a small application that does X"
 ```
 
-Expected status: `HUMAN_TEST_PENDING`. Missing identity, authorization or exact capability scope must fail closed.
+The CLI asks only for authority it actually needs: project-local modification, persistent tool acquisition when no supported development runtime is available, provider authentication when required, and provider data use. On supported Windows hosts it can use Windows Package Manager to acquire a missing Node.js prerequisite and npm to acquire the currently demonstrated Codex adapter after explicit approval. Authentication remains human-owned.
 
-The directed Python interfaces provide the broader contract/selection/authorization/execution/verification path used by the test suite. The CLI demo should not be interpreted as the full capability surface.
+A successful machine-verified development run reaches `HUMAN_TEST_PENDING`; that means the generated solution is ready for human usefulness testing, not that IA Director or the generated product is generally secure, compliant or production-ready.
+
+The runtime adapter is replaceable. Codex is the currently demonstrated development adapter, not an architectural dependency. If no supported acquisition path exists, the software fails closed rather than inventing capability.
+
+For the earlier deterministic core demo, add `--legacy-demo` with its explicit scope/risk arguments.
 
 ## Security and assurance
 
