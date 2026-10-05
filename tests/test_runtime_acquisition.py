@@ -12,6 +12,11 @@ class AcquisitionPlanningTests(unittest.TestCase):
   with patch("ia_director.runtime._codex_cli",return_value=r"C:\tools\codex.cmd"),patch("ia_director.runtime._codex_authenticated",return_value=False):
    plan=plan_development_acquisition()[0]
   self.assertEqual(plan.kind,"authentication");self.assertEqual(plan.action[-1],"login")
+ def test_authentication_uses_native_codex_executable_when_wrapper_node_path_is_stale(self):
+  with patch("ia_director.runtime._codex_cli",return_value=r"C:\\Profile\\qa\\AppData\\Roaming\\npm\\codex.cmd"),patch("ia_director.runtime._codex_authenticated",return_value=False),patch("ia_director.runtime._codex_executable",return_value=r"C:\\Profile\\qa\\AppData\\Roaming\\npm\\node_modules\\@openai\\codex\\vendor\\codex.exe"):
+   plan=plan_development_acquisition()[0]
+  self.assertEqual(plan.kind,"authentication");self.assertEqual(plan.action[-1],"login")
+  self.assertTrue(plan.action[0].lower().endswith("codex.exe"))
  def test_windows_package_manager_can_acquire_missing_node_prerequisite(self):
   with patch("ia_director.runtime._codex_cli",return_value=None),patch("ia_director.runtime._npm_cli",return_value=None),patch("ia_director.runtime._winget_cli",return_value="winget"):
    plan=plan_development_acquisition()[0]
