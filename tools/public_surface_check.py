@@ -39,6 +39,9 @@ ALLOWLIST = {
     ("tools/public_surface_check.py", "internal_marker"),
     ("tools/public_surface_check.py", "secret_pattern"),
     ("tools/public_surface_check.py", "local_path"),
+    ("tools/public_history_check.py", "internal_marker"),
+    ("tools/public_history_check.py", "secret_pattern"),
+    ("tools/public_history_check.py", "local_path"),
 }
 
 
