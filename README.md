@@ -1,5 +1,7 @@
 # IA Director Core
 
+**English** · [Español](README.es.md)
+
 IA Director Core is an experimental, provider-independent Python core for turning an explicit work contract into bounded execution with authorization, verification and evidence.
 
 The current software can:
@@ -25,7 +27,7 @@ Clone the repository and use an isolated Python environment.
 ```powershell
 git clone https://github.com/Luguisaca/ia-director-core.git
 cd ia-director-core
-py -m venv .venv
+python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --no-deps .
 ```
 
