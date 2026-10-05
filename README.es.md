@@ -31,6 +31,8 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --no-deps .
 ```
 
+En Windows **no necesitas activar el entorno virtual**. Los comandos documentados llaman directamente a los ejecutables dentro de `.venv`, así que no es necesario cambiar la política de ejecución de PowerShell. Si `Activate.ps1` aparece bloqueado, omite la activación y continúa con los comandos directos `.venv\Scripts\...` indicados abajo. No deshabilites ni debilites la política de ejecución del equipo solo para ejecutar IA Director.
+
 ### Ubuntu / Debian
 
 ```sh
