@@ -2,9 +2,11 @@ import json,sys
 sys.stdout.reconfigure(encoding='utf-8')
 thread='fixture-thread'
 for line in sys.stdin:
- m=json.loads(line);method=m['method'];i=m['id']
+ m=json.loads(line);method=m['method'];i=m.get('id')
  if method=='initialize':
   print(json.dumps({'id':i,'result':{'codexHome':'/fixture'}}),flush=True)
+ elif method=='initialized':
+  continue
  elif method=='thread/start':
   print(json.dumps({'method':'thread/started','params':{'thread':{'id':thread}}}),flush=True)
   print(json.dumps({'id':i,'result':{'thread':{'id':thread}}}),flush=True)
