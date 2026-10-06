@@ -7,13 +7,13 @@ from typing import Any,Sequence
 class CodexAppServerError(RuntimeError):pass
 @dataclass(frozen=True)
 class CodexTurnResult:
- status:str;thread_id:str;elapsed_seconds:float;event_methods:tuple[str,...]
+ status:str;thread_id:str;elapsed_seconds:float;event_methods:tuple[str,...];item_summaries:tuple[str,...]
 def execute_turn(executable:str,workspace:Path,instruction:str,*,model:str='gpt-6.1-sol',effort:str='low',timeout_seconds:float=180.0,command:Sequence[str]|None=None)->CodexTurnResult:
  """Run one bounded turn; correlate responses and asynchronous notifications."""
  if not workspace.is_dir():raise ValueError('workspace must preexist')
  argv=list(command) if command is not None else [executable,'app-server','--stdio'];started=time.monotonic()
  p=subprocess.Popen(argv,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,encoding='utf-8',errors='strict',bufsize=1)
- inbox:queue.Queue[dict[str,Any]|BaseException]=queue.Queue();pending:list[dict[str,Any]]=[];events:list[str]=[];next_id=1
+ inbox:queue.Queue[dict[str,Any]|BaseException]=queue.Queue();pending:list[dict[str,Any]]=[];events:list[str]=[];items:list[str]=[];next_id=1
  def reader()->None:
   try:
    assert p.stdout is not None
@@ -50,10 +50,14 @@ def execute_turn(executable:str,workspace:Path,instruction:str,*,model:str='gpt-
   while True:
    m=pending.pop(0) if pending else receive();name=m.get('method')
    if isinstance(name,str) and m not in pending and name not in events:events.append(name)
+   if name in {'item/started','item/completed'}:
+    item=(m.get('params') or {}).get('item') or {}
+    kind=item.get('type','unknown');label=item.get('label') or item.get('command') or item.get('text') or ''
+    items.append(f'{name}:{kind}:{str(label)[:240]}')
    if name=='turn/completed':
     status=(m.get('params') or {}).get('turn',{}).get('status')
     if status!='completed':raise CodexAppServerError(f'Codex turn completed notification carried non-success status: {status!r}')
-    return CodexTurnResult(status,tid,time.monotonic()-started,tuple(events))
+    return CodexTurnResult(status,tid,time.monotonic()-started,tuple(events),tuple(items))
    if name=='turn/failed':raise CodexAppServerError('Codex turn failed')
  finally:
   p.terminate()
