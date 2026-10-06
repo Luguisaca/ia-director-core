@@ -211,7 +211,7 @@ def execute_contract(
 
     chosen = next(item for item in capabilities if item.evidence.name == selected.name)
     result = chosen.execute(payload)
-    verified = chosen.verify(payload, result)
+    verified, _detail = normalize_verification(chosen.verify(payload, result))
     return ExecutionRecord(
         selected.name,
         considered,
@@ -250,7 +250,7 @@ def execute_contract_adaptive(
     attempts: list[StrategyAttempt] = []
     for _score, capability in admitted:
         result = capability.execute(payload)
-        if capability.verify(payload, result):
+        if normalize_verification(capability.verify(payload, result))[0]:
             attempts.append(StrategyAttempt(capability.evidence.name, "VERIFIED", "independent verifier passed"))
             handoff = {
                 "selected": capability.evidence.name,
