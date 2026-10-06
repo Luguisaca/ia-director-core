@@ -15,6 +15,8 @@ def _codex_cli() -> str | None:
     found=shutil.which("codex.cmd") or shutil.which("codex")
     if found:return found
     candidate=Path.home()/"AppData"/"Roaming"/"npm"/"codex.cmd"
+    if candidate.is_file():return str(candidate)
+    candidate=Path.home()/".local"/"node_modules"/".bin"/"codex"
     return str(candidate) if candidate.is_file() else None
 
 def _npm_cli() -> str | None:
@@ -67,6 +69,10 @@ def plan_development_acquisition() -> tuple[AcquisitionPlan,...]:
         return (AcquisitionPlan("runtime.codex.app-server",_cli_action(executable,"login"),"provider authentication","Codex is installed but provider authentication is not usable.",True,"authentication"),)
     npm=_npm_cli()
     if not cli and npm:
+        if os.name != "nt":
+            prefix=str(Path.home()/".local")
+            action=_cli_action(npm,"install","--prefix",prefix,"@openai/codex")
+            return (AcquisitionPlan("runtime.codex.app-server",action,"user toolchain","No supported software-development adapter is currently available; npm can acquire the demonstrated Codex adapter in user scope without elevated privileges.",True,"install"),)
         action=_cli_action(npm,"install","-g","@openai/codex")
         return (AcquisitionPlan("runtime.codex.app-server",action,"user/global toolchain","No supported software-development adapter is currently available; npm can acquire the demonstrated Codex adapter.",True,"install"),)
     winget=_winget_cli()
@@ -125,7 +131,8 @@ class RuntimeDevelopmentProvider:
         )
         def execute(instruction:str)->str:
             result=execute_turn(executable,self.workspace,instruction)
-            return result.status
+            details=' | '.join(result.item_summaries) if result.item_summaries else 'no item evidence observed'
+            return f'{result.status}; {details}'
         def verify(_instruction:str,_output:str):
             return verify_workspace(self.workspace)
         return (DiscoveredCapability(evidence,execute,verify),)
