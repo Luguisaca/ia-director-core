@@ -22,6 +22,10 @@ class AcquisitionPlanningTests(unittest.TestCase):
    plan=plan_development_acquisition()[0]
   self.assertEqual(plan.capability,"environment.tool.npm");self.assertEqual(plan.kind,"install-prerequisite")
   self.assertIn("OpenJS.NodeJS.LTS",plan.action)
+ def test_posix_npm_acquisition_uses_user_scope_without_elevation(self):
+  with patch("ia_director.runtime._codex_cli",return_value=None),patch("ia_director.runtime._npm_cli",return_value="/usr/bin/npm"),patch("ia_director.runtime.os.name","posix"):
+   plan=plan_development_acquisition()[0]
+  self.assertEqual(plan.kind,"install");self.assertIn("--prefix",plan.action);self.assertNotIn("-g",plan.action);self.assertTrue(any(".local" in part for part in plan.action))
  def test_authorized_acquisition_executor_reports_result(self):
   plan=AcquisitionPlan("x",("tool","install"),"scope","reason",True,"install")
   with patch("ia_director.runtime.subprocess.run",return_value=Mock(returncode=0)) as run:
