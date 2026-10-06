@@ -28,8 +28,11 @@ def execute_turn(executable:str,workspace:Path,instruction:str,*,model:str='gpt-
   except queue.Empty:raise TimeoutError(f'Codex turn exceeded {timeout_seconds}s') from None
   if isinstance(item,BaseException):raise item
   return item
- def send(method:str,rid:int,params:dict[str,Any])->None:
-  assert p.stdin is not None;p.stdin.write(json.dumps({'method':method,'id':rid,'params':params},separators=(',',':'))+'\n');p.stdin.flush()
+ def send(method:str,rid:int|None,params:dict[str,Any])->None:
+  assert p.stdin is not None
+  message={'method':method,'params':params}
+  if rid is not None:message['id']=rid
+  p.stdin.write(json.dumps(message,separators=(',',':'))+'\n');p.stdin.flush()
  def request(method:str,params:dict[str,Any])->dict[str,Any]:
   nonlocal next_id
   rid=next_id;next_id+=1;send(method,rid,params)
@@ -41,12 +44,16 @@ def execute_turn(executable:str,workspace:Path,instruction:str,*,model:str='gpt-
     return m['result']
  try:
   request('initialize',{'clientInfo':{'name':'ia-director-core','title':'IA Director Core','version':'0'},'capabilities':{'experimentalApi':True,'requestAttestation':False}})
+  send('initialized',None,{})
   th=request('thread/start',{'model':model,'cwd':str(workspace.resolve()),'approvalPolicy':'never','sandbox':'workspace-write','ephemeral':True,'developerInstructions':'Operate only inside the workspace. Complete the requested work and verification without asking the user.'});tid=th['thread']['id']
   request('turn/start',{'threadId':tid,'input':[{'type':'text','text':instruction,'text_elements':[]}],'effort':effort})
   while True:
    m=pending.pop(0) if pending else receive();name=m.get('method')
    if isinstance(name,str) and m not in pending and name not in events:events.append(name)
-   if name=='turn/completed':return CodexTurnResult((m.get('params') or {}).get('turn',{}).get('status','completed'),tid,time.monotonic()-started,tuple(events))
+   if name=='turn/completed':
+    status=(m.get('params') or {}).get('turn',{}).get('status')
+    if status!='completed':raise CodexAppServerError(f'Codex turn completed notification carried non-success status: {status!r}')
+    return CodexTurnResult(status,tid,time.monotonic()-started,tuple(events))
    if name=='turn/failed':raise CodexAppServerError('Codex turn failed')
  finally:
   p.terminate()
