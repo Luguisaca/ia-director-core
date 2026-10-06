@@ -12,5 +12,6 @@ class CodexAppServerTests(unittest.TestCase):
   self.assertIn('thread/started',result.event_methods)
   self.assertIn('item/started',result.event_methods)
   self.assertIn('turn/completed',result.event_methods)
+  self.assertEqual(result.status,'completed')
 
 if __name__=='__main__':unittest.main()
