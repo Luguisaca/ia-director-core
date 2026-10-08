@@ -1,4 +1,4 @@
-"""Experimental discovery/execution layer for EXP-001.
+"""Experimental discovery/execution layer.
 
 Discovery is intentionally explicit and bounded. Providers return capabilities
 with evidence plus an executor. Nothing discovered is automatically authorized.
