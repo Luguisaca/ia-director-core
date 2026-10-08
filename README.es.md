@@ -79,6 +79,12 @@ El adaptador de runtime es reemplazable. Codex es el adaptador de desarrollo dem
 
 Para ejecutar la demostración determinista anterior del núcleo, usa `--legacy-demo` junto con sus argumentos explícitos de alcance y riesgo.
 
+## Límite del piloto demostrado
+
+Un piloto real y acotado demostró que la entrada por intención actual puede seleccionar el adaptador de desarrollo Codex disponible sin que quien llama prescriba ese adaptador, producir una pequeña aplicación local de tareas, preservar efectos observables después de que el proveedor superara su límite de ejecución de 180 segundos, volver a verificar independientemente el workspace resultante y alcanzar `HUMAN_TEST_PENDING` mediante reconciliación fail-closed. La prueba humana de utilidad de esa aplicación concreta fue positiva.
+
+Esto constituye evidencia de **un caso acotado de desarrollo de software**; no demuestra autonomía general, independencia práctica de proveedor, preparación para producción ni soporte universal de tareas. Los resultados de validación de otras versiones no demuestran el comportamiento de esta versión. Valida el software en el entorno objetivo antes de depender de él.
+
 ## Seguridad y aseguramiento
 
 El software es experimental. No infieras autorización a partir del acceso técnico, los metadatos de una capacidad o la salida de un modelo/herramienta. No lo uses para cargas privilegiadas, destructivas, remotas o sensibles sin validar por separado los controles aplicables al entorno.

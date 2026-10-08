@@ -7,13 +7,15 @@ from .capabilities import CapabilityProvider,discover_capabilities,normalize_ver
 from .core import _persist,now_utc
 from .development import DevelopmentExecutor,DevelopmentVerifier,run_development
 from .intent import derive_development_contract
+from .decisions import DecisionCandidate,resolve_material_decisions
 from .selection import CapabilityEvidence,evaluate_candidate,select_capability
 from .workspace import WorkspaceExecutionError
+from .continuity import read_execution_checkpoint
 
 def _evidence_record(evidence:CapabilityEvidence)->dict:
  return {key:sorted(value) if isinstance(value,frozenset) else value for key,value in vars(evidence).items()}
 
-def run_discovered_development_intent(intent:str,*,workspace:Path,records_dir:Path,providers:Iterable[CapabilityProvider],authorized:bool,authorized_by:str|None,max_attempts:int=2,allowed_destinations:frozenset[str]=frozenset({'local'}))->tuple[dict,Path]:
+def run_discovered_development_intent(intent:str,*,workspace:Path,records_dir:Path,providers:Iterable[CapabilityProvider],authorized:bool,authorized_by:str|None,max_attempts:int=2,allowed_destinations:frozenset[str]=frozenset({'local'}),decision_candidates:Iterable[DecisionCandidate]=())->tuple[dict,Path]:
  """Rank provider evidence, authorize, and try bounded development per candidate.
 
  Provider callbacks must be bound to the supplied workspace. execute receives
@@ -22,6 +24,13 @@ def run_discovered_development_intent(intent:str,*,workspace:Path,records_dir:Pa
  inventory only and must not execute development work.
  """
  resolution=derive_development_contract(intent,target=f'workspace://{workspace.resolve()}',allowed_destinations=allowed_destinations)
+ product_decisions=resolve_material_decisions(tuple(decision_candidates))
+ if product_decisions.ia_work_required:
+  record={'schema_version':1,'id':str(uuid.uuid4()),'created_at':now_utc(),'updated_at':now_utc(),'intent':intent,'contract':None,'capability':None,'selection':None,'policy':{'allowed':False,'reasons':[]},'development':None,'accountability':None,'status':'DISCOVERY_REQUIRED','human_gate':{'reached':False,'reason':'Unresolved material choices remain IA research work: '+', '.join(product_decisions.ia_work_required)},'product_decisions':{'resolved':[],'ia_work_required':list(product_decisions.ia_work_required),'human_decisions_required':[]}}
+  return record,_persist(record,records_dir)
+ if product_decisions.human_decisions_required:
+  record={'schema_version':1,'id':str(uuid.uuid4()),'created_at':now_utc(),'updated_at':now_utc(),'intent':intent,'contract':None,'capability':None,'selection':None,'policy':{'allowed':False,'reasons':[]},'development':None,'accountability':None,'status':'PRODUCT_DECISION_REQUIRED','human_gate':{'reached':True,'reason':' '.join(product_decisions.human_decisions_required)},'product_decisions':{'resolved':[],'ia_work_required':[],'human_decisions_required':list(product_decisions.human_decisions_required)}}
+  return record,_persist(record,records_dir)
  candidates=discover_capabilities(providers) if resolution.contract is not None else ()
  selected,decisions=select_capability(resolution.contract,(item.evidence for item in candidates)) if resolution.contract is not None else (None,())
  selection={'ownership':'Director-selected','selected':_evidence_record(selected) if selected else None,'considered':[{'evidence':_evidence_record(item.evidence),'admissible':decision.admissible,'reasons':list(decision.reasons),'score':decision.score} for item,decision in zip(candidates,decisions)],'why':'Lowest declared cost, then complexity among contract-admissible candidates.' if selected else 'No discovered admissible capability. Further discovery remains IA work.'}
@@ -81,3 +90,31 @@ def run_development_intent(intent:str,*,workspace:Path,records_dir:Path,capabili
   raise
  record['development']={'attempts':result.attempts,'verification_evidence':list(result.verification_evidence)};record['accountability']=result.accountability;record['status']=result.status
  record['human_gate']={'reached':result.status=='HUMAN_TEST_PENDING','reason':'Machine verification passed; human usefulness testing remains authoritative.' if result.status=='HUMAN_TEST_PENDING' else 'Machine verification did not pass; autonomous work exhausted its bounded attempts.'};record['handoff']=result.handoff;record['updated_at']=now_utc();return record,_persist(record,records_dir)
+
+
+def close_reconciled_verified_handoff(*, workspace:Path, records_dir:Path, record_id:str)->tuple[dict,Path]:
+ """Close an interrupted development record only after independent reconciliation verified the outcome."""
+ checkpoint=read_execution_checkpoint(workspace)
+ if checkpoint is None or checkpoint.get('status')!='RECONCILED':
+  raise RuntimeError('verified reconciled checkpoint required before handoff closure')
+ reconciliation=checkpoint.get('reconciliation') or {}
+ if reconciliation.get('decision')!='already-applied/verified':
+  raise RuntimeError('only already-applied/verified reconciliation may close human-test handoff')
+ path=records_dir/f'{record_id}.json'
+ if not path.is_file():
+  raise FileNotFoundError('development record not found')
+ import json
+ record=json.loads(path.read_text(encoding='utf-8'))
+ context=checkpoint.get('context') or {}
+ if context.get('record_id')!=record_id:
+  raise RuntimeError('checkpoint does not belong to development record')
+ if record.get('status') not in {'EXECUTION_PENDING','UNKNOWN'}:
+  raise RuntimeError('development record does not require interrupted-execution closure')
+ observations=list((reconciliation.get('evidence') or {}).get('observations') or ())
+ record['development']={'attempts':context.get('attempt',1),'verification_evidence':observations}
+ record['accountability']=checkpoint.get('accountability')
+ record['status']='HUMAN_TEST_PENDING'
+ record['human_gate']={'reached':True,'reason':'Interrupted execution was independently reconciled as already applied and verified; human usefulness testing remains authoritative.'}
+ record['handoff']={'status':'HUMAN_TEST_PENDING','attempts':context.get('attempt',1),'verification_evidence':observations,'reconciled_operation_id':checkpoint.get('operation_id')}
+ record['updated_at']=now_utc()
+ return record,_persist(record,records_dir)
