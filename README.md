@@ -69,6 +69,12 @@ The runtime adapter is replaceable. Codex is the currently demonstrated developm
 
 For the earlier deterministic core demo, add `--legacy-demo` with its explicit scope/risk arguments.
 
+## Demonstrated pilot boundary
+
+A bounded real-world pilot has demonstrated the current intent entry selecting the available Codex development adapter without the caller prescribing that adapter, producing a small local task application, preserving observable effects after the provider exceeded its 180-second execution bound, independently re-verifying the resulting workspace, and reaching `HUMAN_TEST_PENDING` through fail-closed reconciliation. Human usefulness testing for that specific generated application was positive.
+
+This is evidence for **one bounded software-development case**, not a claim of general autonomy, provider independence in practice, production readiness, or universal task support. Previous clean-host/public-snapshot failures remain valid historical evidence and should be re-tested against this promoted version.
+
 ## Security and assurance
 
 The software is experimental. Do not infer authorization from technical access, capability metadata or model/tool output. Do not use it for privileged, destructive, remote or sensitive workloads without separately validating the relevant controls for that environment.
