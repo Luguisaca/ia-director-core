@@ -9,7 +9,7 @@ CONTENT_PATTERNS={
  "local_path": re.compile(r"(?:[A-Z]:\\\\Users\\\\|/home/[^/<\s]+/|/Users/[^/<\s]+/)",re.I),
 }
 # Scanner source intentionally contains the signatures. Remove its diff sections before content checks.
-SCANNER_HEADERS=("tools/public_surface_check.py","tools/public_history_check.py")
+SCANNER_HEADERS=("tools/public_surface_check.py","tools/public_history_check.py","tools/public_metadata_check.py")
 
 def output(*args:str)->str:
  return subprocess.check_output(args,text=True,encoding="utf-8",errors="replace")

@@ -70,7 +70,7 @@ def plan_development_acquisition() -> tuple[AcquisitionPlan,...]:
     npm=_npm_cli()
     if not cli and npm:
         if os.name != "nt":
-            prefix=str(Path.home()/".local")
+            prefix=os.path.join(os.path.expanduser("~"),".local")
             action=_cli_action(npm,"install","--prefix",prefix,"@openai/codex")
             return (AcquisitionPlan("runtime.codex.app-server",action,"user toolchain","No supported software-development adapter is currently available; npm can acquire the demonstrated Codex adapter in user scope without elevated privileges.",True,"install"),)
         action=_cli_action(npm,"install","-g","@openai/codex")
