@@ -73,7 +73,7 @@ For the earlier deterministic core demo, add `--legacy-demo` with its explicit s
 
 A bounded real-world pilot has demonstrated the current intent entry selecting the available Codex development adapter without the caller prescribing that adapter, producing a small local task application, preserving observable effects after the provider exceeded its 180-second execution bound, independently re-verifying the resulting workspace, and reaching `HUMAN_TEST_PENDING` through fail-closed reconciliation. Human usefulness testing for that specific generated application was positive.
 
-This is evidence for **one bounded software-development case**, not a claim of general autonomy, provider independence in practice, production readiness, or universal task support. Previous clean-host/public-snapshot failures remain valid historical evidence and should be re-tested against this promoted version.
+This is evidence for **one bounded software-development case**, not a claim of general autonomy, provider independence in practice, production readiness, or universal task support. Validation results from other versions do not establish behavior for this version. Validate the software in the target environment before relying on it.
 
 ## Security and assurance
 
