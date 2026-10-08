@@ -42,6 +42,7 @@ ALLOWLIST = {
     ("tools/public_history_check.py", "internal_marker"),
     ("tools/public_history_check.py", "secret_pattern"),
     ("tools/public_history_check.py", "local_path"),
+    ("tools/public_metadata_check.py", "local_path"),
 }
 
 
