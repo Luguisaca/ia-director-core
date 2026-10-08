@@ -1,10 +1,12 @@
 import json,tempfile,unittest
 from pathlib import Path
-from ia_director.development_entry import run_development_intent,run_discovered_development_intent
+from ia_director.development_entry import run_development_intent,run_discovered_development_intent,close_reconciled_verified_handoff
+from ia_director.decisions import DecisionCandidate
 from ia_director.capabilities import DiscoveredCapability,StaticProvider
 from dataclasses import replace
 from ia_director.selection import CapabilityEvidence
 from ia_director.workspace import WorkspaceExecutionError
+from ia_director.continuity import ReconciliationEvidence,reconcile_execution
 class DevelopmentEntryTests(unittest.TestCase):
  def capability(self):
   return CapabilityEvidence('fixture.developer',frozenset({'software-development'}),frozenset({'read','create','modify','delete-project-artifacts'}),frozenset({'local'}),'low',0.0,1,'fixture','independent fixture verifier')
@@ -114,4 +116,41 @@ class DevelopmentEntryTests(unittest.TestCase):
    record,_=run_discovered_development_intent('Build fixture',workspace=ws,records_dir=root/'records',providers=[StaticProvider([DiscoveredCapability(self.capability(),execute,verify)])],authorized=True,authorized_by='human-fixture',max_attempts=2)
    self.assertEqual(record['status'],'HUMAN_TEST_PENDING');self.assertEqual(record['development']['attempts'],2)
    self.assertIn('previous implementation did not pass',instructions[1]);self.assertEqual(verified,[(instructions[0],'1'),(instructions[1],'2')])
+ def test_unresearched_material_choice_stays_ia_work_before_executor(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   root=Path(tmp);calls=[]
+   candidate=DiscoveredCapability(self.capability(),lambda i:calls.append(i),lambda _i,_o:True)
+   choice=DecisionCandidate('platform','Choose delivery surface',('web','mobile'),None,None,False,True)
+   record,_=run_discovered_development_intent('Build fixture',workspace=root,records_dir=root/'records',providers=[StaticProvider([candidate])],authorized=True,authorized_by='human-fixture',decision_candidates=[choice])
+   self.assertEqual(record['status'],'DISCOVERY_REQUIRED');self.assertFalse(record['human_gate']['reached']);self.assertEqual(calls,[])
+ def test_evidenced_material_choice_reaches_human_before_executor(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   root=Path(tmp);calls=[]
+   candidate=DiscoveredCapability(self.capability(),lambda i:calls.append(i),lambda _i,_o:True)
+   choice=DecisionCandidate('platform','Use mobile, desktop, or both?',('mobile','desktop','both'),'both','Observed workflows materially need both surfaces.',False,True)
+   record,_=run_discovered_development_intent('Build fixture',workspace=root,records_dir=root/'records',providers=[StaticProvider([candidate])],authorized=True,authorized_by='human-fixture',decision_candidates=[choice])
+   self.assertEqual(record['status'],'PRODUCT_DECISION_REQUIRED');self.assertTrue(record['human_gate']['reached']);self.assertIn('Recommendation: both',record['human_gate']['reason']);self.assertEqual(calls,[])
+ def test_verified_reconciliation_closes_interrupted_record_without_reexecution(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   root=Path(tmp);ws=root/'work';ws.mkdir();records=root/'records';calls=[]
+   def execute(_w,_i):
+    calls.append('execute');(ws/'app.txt').write_text('ok');raise KeyboardInterrupt()
+   with self.assertRaises(WorkspaceExecutionError):
+    run_development_intent('Build fixture',workspace=ws,records_dir=records,capability=self.capability(),executor=execute,verifier=lambda _w:(True,'unused'),authorized=True,authorized_by='human-fixture')
+   record_path=next(records.glob('*.json'));record=json.loads(record_path.read_text())
+   checkpoint=record['checkpoint']
+   reconcile_execution(ws,ReconciliationEvidence(checkpoint['operation_id'],('executor stopped','independent verification PASS'),stopped=True,verified=True))
+   closed,path=close_reconciled_verified_handoff(workspace=ws,records_dir=records,record_id=record['id'])
+   self.assertEqual(calls,['execute']);self.assertEqual(closed['status'],'HUMAN_TEST_PENDING');self.assertTrue(closed['human_gate']['reached'])
+   self.assertEqual(json.loads(path.read_text())['handoff']['reconciled_operation_id'],checkpoint['operation_id'])
+ def test_unverified_reconciliation_cannot_close_handoff(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   root=Path(tmp);ws=root/'work';ws.mkdir();records=root/'records'
+   def execute(_w,_i):raise KeyboardInterrupt()
+   with self.assertRaises(WorkspaceExecutionError):
+    run_development_intent('Build fixture',workspace=ws,records_dir=records,capability=self.capability(),executor=execute,verifier=lambda _w:(False,'no'),authorized=True,authorized_by='human-fixture')
+   record=json.loads(next(records.glob('*.json')).read_text());checkpoint=record['checkpoint']
+   reconcile_execution(ws,ReconciliationEvidence(checkpoint['operation_id'],('executor stopped','no effects verified'),stopped=True,no_effects=True))
+   with self.assertRaises(RuntimeError):
+    close_reconciled_verified_handoff(workspace=ws,records_dir=records,record_id=record['id'])
 if __name__=='__main__':unittest.main()
