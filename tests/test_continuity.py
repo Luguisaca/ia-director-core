@@ -7,10 +7,10 @@ class ContinuityGateTests(unittest.TestCase):
     def test_validated_experiment_cannot_silently_disappear(self):
         discovered = [
             WorkReference(
-                "surface-recon-web-ui",
+                "validated-ui-experiment",
                 "git-branch",
-                "experiment/lab-001-rerun-v2",
-                "HUMAN QA: loopback UI HTTP/API PASS",
+                "experiment/validated-ui-rerun",
+                "HUMAN QA: loopback UI/API PASS",
             )
         ]
         with self.assertRaisesRegex(RuntimeError, "missing disposition"):
