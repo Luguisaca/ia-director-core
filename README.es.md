@@ -83,7 +83,7 @@ Para ejecutar la demostración determinista anterior del núcleo, usa `--legacy-
 
 Un piloto real y acotado demostró que la entrada por intención actual puede seleccionar el adaptador de desarrollo Codex disponible sin que quien llama prescriba ese adaptador, producir una pequeña aplicación local de tareas, preservar efectos observables después de que el proveedor superara su límite de ejecución de 180 segundos, volver a verificar independientemente el workspace resultante y alcanzar `HUMAN_TEST_PENDING` mediante reconciliación fail-closed. La prueba humana de utilidad de esa aplicación concreta fue positiva.
 
-Esto constituye evidencia de **un caso acotado de desarrollo de software**; no demuestra autonomía general, independencia práctica de proveedor, preparación para producción ni soporte universal de tareas. Los fallos históricos de pruebas sobre hosts limpios/snapshots públicos anteriores siguen siendo evidencia válida y deben repetirse contra esta versión promovida.
+Esto constituye evidencia de **un caso acotado de desarrollo de software**; no demuestra autonomía general, independencia práctica de proveedor, preparación para producción ni soporte universal de tareas. Los resultados de validación de otras versiones no demuestran el comportamiento de esta versión. Valida el software en el entorno objetivo antes de depender de él.
 
 ## Seguridad y aseguramiento
 
