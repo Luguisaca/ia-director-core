@@ -28,7 +28,6 @@ def main(argv:list[str]|None=None)->int:
     if not authorized:
         print(json.dumps({"status":"AUTHORIZATION_REQUIRED","human_gate":{"reached":True,"reason":"Project-local modification authority is required."}},indent=2));return 3
     identity=args.authorized_by or getpass.getuser()
-    args.workspace.mkdir(parents=True,exist_ok=True)
     providers=runtime_development_providers(args.workspace)
     discovered=tuple(cap for provider in providers for cap in provider.discover())
     for _ in range(3):
@@ -51,6 +50,7 @@ def main(argv:list[str]|None=None)->int:
     if needs_provider and not allow_provider:
         allow_provider=_confirm("A discovered development capability requires sending necessary intent/project context to its provider. Authorize for this run? [y/N] ")
     destinations=frozenset({"local","provider"}) if allow_provider else frozenset({"local"})
+    args.workspace.mkdir(parents=True,exist_ok=True)
     record,path=run_discovered_development_intent(args.intent,workspace=args.workspace,records_dir=args.records_dir,providers=providers,authorized=True,authorized_by=identity,allowed_destinations=destinations)
     print(json.dumps({"record":str(path),"status":record["status"],"selected":record.get("capability"),"human_gate":record["human_gate"],"selection":record.get("selection")},indent=2))
     return 0 if record["status"]=="HUMAN_TEST_PENDING" else 2
