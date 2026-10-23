@@ -6,6 +6,7 @@ Its types are experiment fixtures, not an approved universal architecture.
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from itertools import combinations
 from typing import Iterable
@@ -96,13 +97,23 @@ def select_capability(
 ) -> tuple[CapabilityEvidence | None, tuple[CandidateDecision, ...]]:
     """Return the best admitted candidate and the full explainable decision trail."""
     materialized = tuple(candidates)
-    decisions = tuple(evaluate_candidate(contract, item) for item in materialized)
-    by_name = {item.name: item for item in materialized}
-    admitted = [item for item in decisions if item.admissible]
+    name_counts = Counter(item.name for item in materialized)
+    decisions = []
+    for item in materialized:
+        decision = evaluate_candidate(contract, item)
+        if name_counts[item.name] > 1:
+            # An identity collision can shadow verified evidence. Reject every
+            # colliding entry; never use a name->candidate last-wins lookup.
+            decision = CandidateDecision(
+                item.name, False, decision.reasons + ("duplicate capability name",)
+            )
+        decisions.append(decision)
+    admitted = [(item, decision) for item, decision in zip(materialized, decisions)
+                if decision.admissible]
     if not admitted:
-        return None, decisions
-    selected = min(admitted, key=lambda item: item.score)
-    return by_name[selected.capability], decisions
+        return None, tuple(decisions)
+    selected, _decision = min(admitted, key=lambda entry: entry[1].score)
+    return selected, tuple(decisions)
 
 
 
