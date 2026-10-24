@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
+from fractions import Fraction
 from itertools import combinations
+from math import isfinite
 from typing import Iterable
 
 
@@ -48,6 +50,16 @@ class CandidateDecision:
 _RISK = {"low": 0, "medium": 1, "high": 2}
 
 
+def _valid_cost(value: object) -> bool:
+    """Reject malformed, negative and non-finite cost evidence and limits."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return isfinite(value) and value >= 0
+    except (OverflowError, TypeError, ValueError):
+        return False
+
+
 def evaluate_candidate(contract: WorkContract, candidate: CapabilityEvidence) -> CandidateDecision:
     """Evaluate one candidate only from explicit contract/evidence."""
     reasons: list[str] = []
@@ -76,11 +88,15 @@ def evaluate_candidate(contract: WorkContract, candidate: CapabilityEvidence) ->
     if candidate.verification is None:
         reasons.append("verification evidence is missing")
 
-    if contract.max_cost is not None:
-        if candidate.estimated_cost is None:
+    if contract.max_cost is not None and not _valid_cost(contract.max_cost):
+        reasons.append("cost limit is invalid")
+    if candidate.estimated_cost is None:
+        if contract.max_cost is not None:
             reasons.append("cost evidence is missing")
-        elif candidate.estimated_cost > contract.max_cost:
-            reasons.append("cost exceeds contract")
+    elif not _valid_cost(candidate.estimated_cost):
+        reasons.append("cost evidence is invalid")
+    elif contract.max_cost is not None and _valid_cost(contract.max_cost) and candidate.estimated_cost > contract.max_cost:
+        reasons.append("cost exceeds contract")
 
     if reasons:
         return CandidateDecision(candidate.name, False, tuple(reasons))
@@ -126,6 +142,8 @@ def select_capability_set(
     a workflow. Candidate safety constraints are checked independently and
     feature coverage is evaluated only after those checks pass.
     """
+    if contract.max_cost is not None and not _valid_cost(contract.max_cost):
+        return None, ("cost limit is invalid",)
     materialized = tuple(candidates)
     safe: list[CapabilityEvidence] = []
     rejected: list[str] = []
@@ -149,19 +167,30 @@ def select_capability_set(
             rejected.append(f"{item.name}: " + "; ".join(decision.reasons))
 
     for size in range(1, len(safe) + 1):
-        admitted: list[tuple[tuple[float, int, tuple[str, ...]], tuple[CapabilityEvidence, ...]]] = []
+        admitted: list[tuple[tuple[Fraction, int, tuple[str, ...]], tuple[CapabilityEvidence, ...]]] = []
         for group in combinations(safe, size):
             features = frozenset().union(*(item.features for item in group))
             if not contract.required_features <= features:
                 continue
-            if contract.max_cost is not None:
-                if any(item.estimated_cost is None for item in group):
-                    continue
-                total_cost = sum(item.estimated_cost or 0.0 for item in group)
-                if total_cost > contract.max_cost:
-                    continue
-            else:
-                total_cost = sum(item.estimated_cost or 0.0 for item in group)
+            if contract.max_cost is not None and any(item.estimated_cost is None for item in group):
+                continue
+            # Compare exact rational values of the declared decimal costs.
+            # Binary floats can lose a tiny positive term; Decimal arithmetic
+            # can also round it away when the total exceeds context precision.
+            total_cost = sum(
+                (Fraction(str(item.estimated_cost or 0.0)) for item in group),
+                Fraction(0),
+            )
+            # Reject totals beyond the finite machine-cost range, including
+            # overflow when converting an exact rational to float.
+            try:
+                finite_total = _valid_cost(float(total_cost))
+            except OverflowError:
+                finite_total = False
+            if not finite_total:
+                continue
+            if contract.max_cost is not None and total_cost > Fraction(str(contract.max_cost)):
+                continue
             complexity = sum(item.complexity for item in group)
             names = tuple(sorted(item.name for item in group))
             admitted.append(((total_cost, complexity, names), group))
@@ -187,6 +216,6 @@ def contract_issues(contract: WorkContract) -> tuple[str, ...]:
         issues.append("allowed data destinations are missing")
     if contract.max_risk not in _RISK:
         issues.append("maximum risk tier is unknown")
-    if contract.max_cost is not None and contract.max_cost < 0:
-        issues.append("maximum cost cannot be negative")
+    if contract.max_cost is not None and not _valid_cost(contract.max_cost):
+        issues.append("maximum cost must be finite and nonnegative")
     return tuple(issues)
